@@ -1,4 +1,8 @@
 ejemplos_medidas_no_clasificados = list(
+  "Todos" = list(
+    datos = "5;  7;  2;  9;  3;  7;  4;",
+    nota = "Ejemplo general para calcular todas las medidas de posición con datos no clasificados."
+  ),
   "Media aritmética" = list(
     datos = "5;  7;  2;  9;  3;  7;  4;",
     nota = "Ejemplo del PDF: llamadas diarias realizadas por una persona durante siete días."
@@ -37,6 +41,14 @@ ejemplos_medidas_no_clasificados = list(
 )
 
 ejemplos_medidas_clasificados = list(
+  "Todos" = list(
+    tabla = data.frame(
+      Li = c(21, 29, 37, 45, 53),
+      Ls = c(29, 37, 45, 53, 61),
+      fi = c(4, 8, 10, 6, 2)
+    ),
+    nota = "Ejemplo general para calcular todas las medidas de posición con datos clasificados."
+  ),
   "Media aritmética" = list(
     tabla = data.frame(
       Li = c(0, 4, 8, 12, 16),
@@ -177,6 +189,14 @@ parsear_numeros_medidas = function(texto) {
 }
 
 validar_k_medida = function(medida, k) {
+  if (is.null(k) || is.na(k)) {
+    return("El valor de k no puede estar vacío.")
+  }
+
+  if (k != floor(k)) {
+    return("El valor de k debe ser un número entero.")
+  }
+
   if (medida == "Cuartiles" && (k < 1 || k > 3)) {
     return("En cuartiles, k debe estar entre 1 y 3.")
   }
@@ -597,6 +617,228 @@ calcular_medida_clasificada = function(tabla, medida, k = 1) {
   }
 }
 
+calcular_todas_no_clasificadas = function(datos, k_cuartil, k_decil, k_percentil) {
+  validacion = validar_no_clasificados_medidas(datos)
+
+  if (validacion != TRUE) {
+    return(list(error = validacion))
+  }
+
+  validacion_q = validar_k_medida("Cuartiles", k_cuartil)
+  validacion_d = validar_k_medida("Deciles", k_decil)
+  validacion_p = validar_k_medida("Percentiles", k_percentil)
+
+  media_aritmetica = calcular_medida_no_clasificada(datos, "Media aritmética")$resultado
+
+  if (any(datos <= 0)) {
+    media_geometrica = "No se puede: existen valores menores o iguales a 0"
+  } else {
+    media_geometrica = calcular_medida_no_clasificada(datos, "Media geométrica")$resultado
+  }
+
+  if (any(datos == 0)) {
+    media_armonica = "No se puede: existe al menos un valor igual a 0"
+  } else {
+    media_armonica = calcular_medida_no_clasificada(datos, "Media armónica")$resultado
+  }
+
+  mediana = calcular_medida_no_clasificada(datos, "Mediana")$resultado
+  moda = calcular_medida_no_clasificada(datos, "Moda")$resultado
+
+  if (validacion_q == TRUE) {
+    cuartil = calcular_medida_no_clasificada(datos, "Cuartiles", k_cuartil)$resultado
+  } else {
+    cuartil = validacion_q
+  }
+
+  if (validacion_d == TRUE) {
+    decil = calcular_medida_no_clasificada(datos, "Deciles", k_decil)$resultado
+  } else {
+    decil = validacion_d
+  }
+
+  if (validacion_p == TRUE) {
+    percentil = calcular_medida_no_clasificada(datos, "Percentiles", k_percentil)$resultado
+  } else {
+    percentil = validacion_p
+  }
+
+  datos_ordenados = sort(datos)
+
+  tabla_resultados = data.frame(
+    medida = c(
+      "Media aritmética",
+      "Media geométrica",
+      "Media armónica",
+      "Mediana",
+      "Moda",
+      paste0("Q", k_cuartil),
+      paste0("D", k_decil),
+      paste0("P", k_percentil)
+    ),
+    resultado = c(
+      media_aritmetica,
+      media_geometrica,
+      media_armonica,
+      mediana,
+      moda,
+      cuartil,
+      decil,
+      percentil
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  detalle = data.frame(
+    posicion = seq_along(datos_ordenados),
+    xi_ordenado = datos_ordenados
+  )
+
+  pasos = data.frame(
+    paso = c(
+      "Cantidad de datos",
+      "Dato menor",
+      "Dato mayor",
+      "Q seleccionado",
+      "D seleccionado",
+      "P seleccionado"
+    ),
+    valor = c(
+      length(datos),
+      min(datos),
+      max(datos),
+      paste0("Q", k_cuartil),
+      paste0("D", k_decil),
+      paste0("P", k_percentil)
+    )
+  )
+
+  list(
+    todos = TRUE,
+    resultado = "Ver tabla de resultados",
+    pasos = pasos,
+    detalle = detalle,
+    tabla_todos = tabla_resultados
+  )
+}
+
+calcular_todas_clasificadas = function(tabla, k_cuartil, k_decil, k_percentil) {
+  validacion = validar_clasificados_medidas(tabla)
+
+  if (validacion != TRUE) {
+    return(list(error = validacion))
+  }
+
+  validacion_q = validar_k_medida("Cuartiles", k_cuartil)
+  validacion_d = validar_k_medida("Deciles", k_decil)
+  validacion_p = validar_k_medida("Percentiles", k_percentil)
+
+  tabla_frecuencia = crear_tabla_frecuencia_clasificada_medidas(tabla)
+  xi = tabla_frecuencia$xi
+
+  media_aritmetica = calcular_medida_clasificada(tabla, "Media aritmética")$resultado
+
+  if (any(xi <= 0)) {
+    media_geometrica = "No se puede: existen marcas de clase menores o iguales a 0"
+  } else {
+    media_geometrica = calcular_medida_clasificada(tabla, "Media geométrica")$resultado
+  }
+
+  if (any(xi == 0)) {
+    media_armonica = "No se puede: existe una marca de clase igual a 0"
+  } else {
+    media_armonica = calcular_medida_clasificada(tabla, "Media armónica")$resultado
+  }
+
+  mediana = calcular_medida_clasificada(tabla, "Mediana")$resultado
+  moda = calcular_medida_clasificada(tabla, "Moda")$resultado
+
+  if (validacion_q == TRUE) {
+    cuartil = calcular_medida_clasificada(tabla, "Cuartiles", k_cuartil)$resultado
+  } else {
+    cuartil = validacion_q
+  }
+
+  if (validacion_d == TRUE) {
+    decil = calcular_medida_clasificada(tabla, "Deciles", k_decil)$resultado
+  } else {
+    decil = validacion_d
+  }
+
+  if (validacion_p == TRUE) {
+    percentil = calcular_medida_clasificada(tabla, "Percentiles", k_percentil)$resultado
+  } else {
+    percentil = validacion_p
+  }
+
+  tabla_resultados = data.frame(
+    medida = c(
+      "Media aritmética",
+      "Media geométrica",
+      "Media armónica",
+      "Mediana",
+      "Moda",
+      paste0("Q", k_cuartil),
+      paste0("D", k_decil),
+      paste0("P", k_percentil)
+    ),
+    resultado = c(
+      media_aritmetica,
+      media_geometrica,
+      media_armonica,
+      mediana,
+      moda,
+      cuartil,
+      decil,
+      percentil
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  pasos = data.frame(
+    paso = c(
+      "Cantidad de datos",
+      "Total de frecuencias",
+      "Q seleccionado",
+      "D seleccionado",
+      "P seleccionado"
+    ),
+    valor = c(
+      nrow(tabla),
+      sum(tabla$fi),
+      paste0("Q", k_cuartil),
+      paste0("D", k_decil),
+      paste0("P", k_percentil)
+    )
+  )
+
+  list(
+    todos = TRUE,
+    resultado = "Ver tabla de resultados",
+    pasos = pasos,
+    detalle = tabla_frecuencia,
+    tabla_todos = tabla_resultados
+  )
+}
+
+formatear_valor_medida = function(valor) {
+  numero = suppressWarnings(as.numeric(valor))
+
+  if (!is.na(numero)) {
+    return(formatear_numero(numero, 4))
+  }
+
+  as.character(valor)
+}
+
+formatear_tabla_todos_medidas = function(tabla) {
+  salida = tabla
+
+  salida$resultado = sapply(salida$resultado, formatear_valor_medida)
+
+  salida
+}
+
 formatear_tabla_medidas = function(tabla) {
   salida = tabla
 
@@ -625,7 +867,7 @@ modulo_medidas_ui = function(id) {
     h1(class = "titulo", "Medidas de posición"),
     div(
       class = "nota",
-      "Seleccione el tipo de datos y la medida que desea calcular. Cada combinación carga un ejemplo recomendado del material del docente."
+      "Seleccione el tipo de datos y la medida que desea calcular. Si selecciona Todos, el sistema calcula todas las medidas disponibles con los mismos datos."
     ),
     div(
       class = "grupo-controles",
@@ -642,6 +884,7 @@ modulo_medidas_ui = function(id) {
         ns("medida"),
         "Medida",
         choices = c(
+          "Todos",
           "Media aritmética",
           "Media geométrica",
           "Media armónica",
@@ -752,8 +995,13 @@ modulo_medidas_server = function(id) {
 
       if (tipo == "no_clasificados") {
         ejemplo = ejemplos_medidas_no_clasificados[[medida]]
-
         updateTextAreaInput(session, "datos_no_clasificados", value = ejemplo$datos)
+
+        if (medida == "Todos") {
+          updateNumericInput(session, "k_cuartil_todos", value = 2)
+          updateNumericInput(session, "k_decil_todos", value = 5)
+          updateNumericInput(session, "k_percentil_todos", value = 50)
+        }
 
         if (medida %in% c("Cuartiles", "Deciles", "Percentiles") && !is.null(ejemplo$k)) {
           updateNumericInput(session, "k", value = ejemplo$k)
@@ -761,6 +1009,12 @@ modulo_medidas_server = function(id) {
       } else {
         ejemplo = ejemplos_medidas_clasificados[[medida]]
         tabla_reactiva(ejemplo$tabla)
+
+        if (medida == "Todos") {
+          updateNumericInput(session, "k_cuartil_todos", value = 2)
+          updateNumericInput(session, "k_decil_todos", value = 5)
+          updateNumericInput(session, "k_percentil_todos", value = 50)
+        }
 
         if (medida %in% c("Cuartiles", "Deciles", "Percentiles") && !is.null(ejemplo$k)) {
           updateNumericInput(session, "k", value = ejemplo$k)
@@ -777,7 +1031,18 @@ modulo_medidas_server = function(id) {
     })
 
     output$entrada_k = renderUI({
-      if (input$medida == "Cuartiles") {
+      if (input$medida == "Todos") {
+        div(
+          class = "resultado-final",
+          h4("Medidas Q, D y P a mostrar"),
+          div(
+            class = "grupo-controles",
+            numericInput(session$ns("k_cuartil_todos"), "Cuartil", value = 2, min = 1, max = 3, step = 1),
+            numericInput(session$ns("k_decil_todos"), "Decil", value = 5, min = 1, max = 9, step = 1)
+          ),
+          numericInput(session$ns("k_percentil_todos"), "Percentil", value = 50, min = 1, max = 99, step = 1)
+        )
+      } else if (input$medida == "Cuartiles") {
         numericInput(session$ns("k"), "Valor de k para Qk", value = 1, min = 1, max = 3, step = 1)
       } else if (input$medida == "Deciles") {
         numericInput(session$ns("k"), "Valor de k para Dk", value = 3, min = 1, max = 9, step = 1)
@@ -883,6 +1148,44 @@ modulo_medidas_server = function(id) {
       tipo = input$tipo_datos
       k = ifelse(is.null(input$k), 1, input$k)
 
+      if (tipo == "no_clasificados") {
+        parseado = parsear_numeros_medidas(input$datos_no_clasificados)
+
+        if (length(parseado$invalidos) > 0) {
+          return(list(error = paste("Hay datos no numéricos o mal escritos:", paste(parseado$invalidos, collapse = ", "))))
+        }
+
+        if (medida == "Todos") {
+          return(calcular_todas_no_clasificadas(
+            parseado$valores,
+            input$k_cuartil_todos,
+            input$k_decil_todos,
+            input$k_percentil_todos
+          ))
+        }
+
+        if (medida %in% c("Cuartiles", "Deciles", "Percentiles")) {
+          validacion_k = validar_k_medida(medida, k)
+
+          if (validacion_k != TRUE) {
+            return(list(error = validacion_k))
+          }
+        }
+
+        return(calcular_medida_no_clasificada(parseado$valores, medida, k))
+      }
+
+      tabla = leer_tabla_actual()
+
+      if (medida == "Todos") {
+        return(calcular_todas_clasificadas(
+          tabla,
+          input$k_cuartil_todos,
+          input$k_decil_todos,
+          input$k_percentil_todos
+        ))
+      }
+
       if (medida %in% c("Cuartiles", "Deciles", "Percentiles")) {
         validacion_k = validar_k_medida(medida, k)
 
@@ -891,17 +1194,6 @@ modulo_medidas_server = function(id) {
         }
       }
 
-      if (tipo == "no_clasificados") {
-        parseado = parsear_numeros_medidas(input$datos_no_clasificados)
-
-        if (length(parseado$invalidos) > 0) {
-          return(list(error = paste("Hay datos no numéricos o mal escritos:", paste(parseado$invalidos, collapse = ", "))))
-        }
-
-        return(calcular_medida_no_clasificada(parseado$valores, medida, k))
-      }
-
-      tabla = leer_tabla_actual()
       calcular_medida_clasificada(tabla, medida, k)
     }, ignoreNULL = FALSE)
 
@@ -910,6 +1202,20 @@ modulo_medidas_server = function(id) {
 
       if (!is.null(resultado$error)) {
         return(div(class = "error", resultado$error))
+      }
+
+      if (isTRUE(resultado$todos)) {
+        return(tagList(
+          h2(class = "subtitulo", "Resultados de todas las medidas"),
+          tableOutput(session$ns("tabla_todos")),
+          h4("Detalle"),
+          tableOutput(session$ns("tabla_detalle")),
+          div(
+            class = "resultado-final",
+            h4("Resumen"),
+            tableOutput(session$ns("tabla_resumen"))
+          )
+        ))
       }
 
       etiqueta = nombre_resultado_medida(input$medida, ifelse(is.null(input$k), 1, input$k))
@@ -932,10 +1238,20 @@ modulo_medidas_server = function(id) {
       )
     })
 
+    output$tabla_todos = renderTable({
+      resultado = resultado_medida()
+
+      if (!isTRUE(resultado$todos)) {
+        return(NULL)
+      }
+
+      formatear_tabla_todos_medidas(resultado$tabla_todos)
+    }, striped = FALSE, bordered = FALSE, spacing = "m")
+
     output$tabla_pasos = renderTable({
       resultado = resultado_medida()
 
-      if (!is.null(resultado$error)) {
+      if (!is.null(resultado$error) || isTRUE(resultado$todos)) {
         return(NULL)
       }
 
@@ -957,6 +1273,17 @@ modulo_medidas_server = function(id) {
 
       if (!is.null(resultado$error)) {
         return(NULL)
+      }
+
+      if (isTRUE(resultado$todos)) {
+        return(data.frame(
+          medida = c("Tipo de datos", "Medida calculada", "Resultado"),
+          valor = c(
+            ifelse(input$tipo_datos == "no_clasificados", "Datos no clasificados", "Datos clasificados"),
+            "Todas",
+            "Ver tabla de resultados"
+          )
+        ))
       }
 
       etiqueta = nombre_resultado_medida(input$medida, ifelse(is.null(input$k), 1, input$k))
