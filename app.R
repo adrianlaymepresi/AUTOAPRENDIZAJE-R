@@ -7,6 +7,7 @@ source("R/utilidades.R")
 source("R/modules/simple_inspeccion.R")
 source("R/modules/sturges.R")
 source("R/modules/grafico_barras.R")
+source("R/modules/diagrama_lineal.R")
 
 ui = fluidPage(
   tags$head(
@@ -314,7 +315,8 @@ ui = fluidPage(
         choices = c(
           "Tabla simple inspección",
           "Tabla Sturges",
-          "Gráfico de barras"
+          "Gráfico de barras",
+          "Diagrama lineal"
         ),
         selected = "Tabla simple inspección"
       )
@@ -332,6 +334,10 @@ ui = fluidPage(
       conditionalPanel(
         condition = "input.apartado == 'Gráfico de barras'",
         modulo_grafico_barras_ui("barras")
+      ),
+      conditionalPanel(
+        condition = "input.apartado == 'Diagrama lineal'",
+        modulo_diagrama_lineal_ui("lineal")
       )
     )
   )
@@ -341,6 +347,7 @@ server = function(input, output, session) {
   modulo_simple_inspeccion_server("simple")
   modulo_sturges_server("sturges")
   modulo_grafico_barras_server("barras")
+  modulo_diagrama_lineal_server("lineal")
 }
 
 shinyApp(ui, server)
