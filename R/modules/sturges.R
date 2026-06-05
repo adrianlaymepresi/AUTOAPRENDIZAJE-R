@@ -13,6 +13,151 @@ redondear_k = function(valor) {
   floor(valor + 0.5)
 }
 
+validar_k_posicion_sturges = function(nombre, k, minimo, maximo) {
+  if (is.null(k) || is.na(k)) {
+    return(paste("El valor de", nombre, "no puede estar vacío."))
+  }
+
+  if (k != floor(k)) {
+    return(paste("El valor de", nombre, "debe ser un número entero."))
+  }
+
+  if (k < minimo || k > maximo) {
+    return(paste("El valor de", nombre, "debe estar entre", minimo, "y", maximo))
+  }
+
+  TRUE
+}
+
+calcular_cuantil_sturges = function(tabla, k, divisor) {
+  n = sum(tabla$fi)
+  posicion = k * n / divisor
+  indice = which(tabla$Fi >= posicion)[1]
+
+  if (is.na(indice)) {
+    return(NA)
+  }
+
+  Li = tabla$Li[indice]
+  Ls = tabla$Ls[indice]
+  t = Ls - Li
+  Fi_anterior = ifelse(indice == 1, 0, tabla$Fi[indice - 1])
+  fi_clase = tabla$fi[indice]
+
+  Li + ((posicion - Fi_anterior) * t / fi_clase)
+}
+
+calcular_mediana_sturges = function(tabla) {
+  calcular_cuantil_sturges(tabla, 1, 2)
+}
+
+calcular_moda_sturges = function(tabla) {
+  indice = which.max(tabla$fi)
+
+  Li = tabla$Li[indice]
+  Ls = tabla$Ls[indice]
+  t = Ls - Li
+
+  fi_modal = tabla$fi[indice]
+  fi_anterior = ifelse(indice == 1, 0, tabla$fi[indice - 1])
+  fi_posterior = ifelse(indice == nrow(tabla), 0, tabla$fi[indice + 1])
+
+  d1 = fi_modal - fi_anterior
+  d2 = fi_modal - fi_posterior
+
+  if ((d1 + d2) == 0) {
+    return(NA)
+  }
+
+  Li + ((t * d1) / (d1 + d2))
+}
+
+calcular_tabla_medidas_posicion_sturges = function(resultado, k_cuartil, k_decil, k_percentil) {
+  tabla = resultado$tabla
+  decimales = resultado$decimales
+
+  validacion_q = validar_k_posicion_sturges("Qk", k_cuartil, 1, 3)
+  validacion_d = validar_k_posicion_sturges("Dk", k_decil, 1, 9)
+  validacion_p = validar_k_posicion_sturges("Pk", k_percentil, 1, 99)
+
+  n = sum(tabla$fi)
+  xi = tabla$xi
+  fi = tabla$fi
+
+  media_aritmetica = sum(xi * fi) / n
+
+  if (any(xi <= 0)) {
+    media_geometrica = "No se puede: existen marcas de clase menores o iguales a 0"
+  } else {
+    media_geometrica = exp(sum(fi * log(xi)) / n)
+  }
+
+  if (any(xi == 0)) {
+    media_armonica = "No se puede: existe una marca de clase igual a 0"
+  } else {
+    media_armonica = n / sum(fi / xi)
+  }
+
+  mediana = calcular_mediana_sturges(tabla)
+  moda = calcular_moda_sturges(tabla)
+
+  if (validacion_q == TRUE) {
+    cuartil = calcular_cuantil_sturges(tabla, k_cuartil, 4)
+  } else {
+    cuartil = validacion_q
+  }
+
+  if (validacion_d == TRUE) {
+    decil = calcular_cuantil_sturges(tabla, k_decil, 10)
+  } else {
+    decil = validacion_d
+  }
+
+  if (validacion_p == TRUE) {
+    percentil = calcular_cuantil_sturges(tabla, k_percentil, 100)
+  } else {
+    percentil = validacion_p
+  }
+
+  tabla_medidas = data.frame(
+    medida = c(
+      "Media aritmética",
+      "Media geométrica",
+      "Media armónica",
+      "Mediana",
+      "Moda",
+      paste0("Q", k_cuartil),
+      paste0("D", k_decil),
+      paste0("P", k_percentil)
+    ),
+    resultado = c(
+      media_aritmetica,
+      media_geometrica,
+      media_armonica,
+      mediana,
+      moda,
+      cuartil,
+      decil,
+      percentil
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  for (i in seq_len(nrow(tabla_medidas))) {
+    numero = suppressWarnings(as.numeric(tabla_medidas$resultado[i]))
+
+    if (!is.na(numero)) {
+      tabla_medidas$resultado[i] = formatear_numero(
+        numero,
+        decimales + 2,
+        forzar_decimales = FALSE
+      )
+    }
+  }
+
+  tabla_medidas
+}
+
 crear_tabla_sturges = function(texto) {
   detalle = parsear_numeros_detalle(texto)
   datos = detalle$valores
@@ -96,7 +241,11 @@ crear_tabla_sturges = function(texto) {
       conteos[i] = "-"
     } else {
       conteos[i] = paste(
-        formatear_numero(sort(datos_intervalo), decimales, forzar_decimales = decimales > 0),
+        formatear_numero(
+          sort(datos_intervalo),
+          decimales,
+          forzar_decimales = decimales > 0
+        ),
         collapse = ", "
       )
     }
@@ -359,6 +508,37 @@ modulo_sturges_ui = function(id) {
       "Cargar ejemplo",
       class = "btn-info"
     ),
+    div(
+      class = "resultado-final",
+      h4("Medidas de posición a mostrar"),
+      div(
+        class = "grupo-controles",
+        numericInput(
+          ns("k_cuartil_sturges"),
+          "Cuartil",
+          value = 2,
+          min = 1,
+          max = 3,
+          step = 1
+        ),
+        numericInput(
+          ns("k_decil_sturges"),
+          "Decil",
+          value = 5,
+          min = 1,
+          max = 9,
+          step = 1
+        )
+      ),
+      numericInput(
+        ns("k_percentil_sturges"),
+        "Percentil",
+        value = 50,
+        min = 1,
+        max = 99,
+        step = 1
+      )
+    ),
     tags$hr(),
     uiOutput(ns("salida"))
   )
@@ -374,6 +554,9 @@ modulo_sturges_server = function(id) {
         value = "Soldados agrupados por estatura en metros"
       )
       updateTextAreaInput(session, "datos", value = datos_ejemplo_sturges)
+      updateNumericInput(session, "k_cuartil_sturges", value = 2)
+      updateNumericInput(session, "k_decil_sturges", value = 5)
+      updateNumericInput(session, "k_percentil_sturges", value = 50)
     })
 
     resultado_sturges = eventReactive(input$generar, {
@@ -396,6 +579,12 @@ modulo_sturges_server = function(id) {
         h2(class = "subtitulo", input$numero_tabla),
         h4(input$titulo_tabla),
         tableOutput(session$ns("tabla_sturges")),
+
+        div(
+          class = "resultado-final",
+          h4("Medidas de posición desde la tabla agrupada"),
+          tableOutput(session$ns("medidas_posicion_sturges"))
+        ),
 
         div(
           class = "resultado-final",
@@ -423,6 +612,21 @@ modulo_sturges_server = function(id) {
       }
 
       formatear_tabla_sturges(resultado)
+    }, striped = FALSE, bordered = FALSE, spacing = "m")
+
+    output$medidas_posicion_sturges = renderTable({
+      resultado = resultado_sturges()
+
+      if (!is.null(resultado$error)) {
+        return(NULL)
+      }
+
+      calcular_tabla_medidas_posicion_sturges(
+        resultado,
+        input$k_cuartil_sturges,
+        input$k_decil_sturges,
+        input$k_percentil_sturges
+      )
     }, striped = FALSE, bordered = FALSE, spacing = "m")
 
     output$resumen_sturges = renderTable({
