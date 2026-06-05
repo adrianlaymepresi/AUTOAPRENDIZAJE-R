@@ -1,6 +1,5 @@
 # CTRL + ENTER
-# Ejecutar con: source("app.R")
-# O también: shiny::runApp(".")
+# ejecutar: shiny::runApp(".")
 
 library(shiny)
 
