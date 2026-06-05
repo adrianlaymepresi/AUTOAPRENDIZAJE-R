@@ -1,5 +1,12 @@
 normalizar_numero = function(valor) {
   valor = trimws(as.character(valor))
+  valor = gsub("\\.", "", valor)
+  valor = gsub(",", ".", valor, fixed = TRUE)
+  suppressWarnings(as.numeric(valor))
+}
+
+normalizar_numero_simple = function(valor) {
+  valor = trimws(as.character(valor))
   valor = gsub(",", ".", valor, fixed = TRUE)
   suppressWarnings(as.numeric(valor))
 }
@@ -57,6 +64,16 @@ formatear_porcentaje = function(x, decimales = 2) {
   )
 }
 
+formatear_miles = function(x) {
+  format(
+    round(as.numeric(x), 0),
+    big.mark = ".",
+    decimal.mark = ",",
+    scientific = FALSE,
+    trim = TRUE
+  )
+}
+
 parsear_numeros_detalle = function(texto) {
   if (is.null(texto) || trimws(texto) == "") {
     return(list(valores = numeric(0), decimales = 0, invalidos = character(0)))
@@ -70,7 +87,7 @@ parsear_numeros_detalle = function(texto) {
   tokens = trimws(unlist(strsplit(texto, ";", fixed = TRUE)))
   tokens = tokens[tokens != ""]
 
-  valores = normalizar_numero(tokens)
+  valores = normalizar_numero_simple(tokens)
   validos = !is.na(valores)
 
   valores_validos = valores[validos]
