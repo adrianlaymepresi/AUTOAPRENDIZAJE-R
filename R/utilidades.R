@@ -59,7 +59,7 @@ formatear_porcentaje = function(x, decimales = 2) {
 
 parsear_numeros_detalle = function(texto) {
   if (is.null(texto) || trimws(texto) == "") {
-    return(list(valores = numeric(0), decimales = 0))
+    return(list(valores = numeric(0), decimales = 0, invalidos = character(0)))
   }
 
   texto = gsub("\r", "\n", texto)

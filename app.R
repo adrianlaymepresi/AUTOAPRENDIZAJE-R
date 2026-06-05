@@ -5,6 +5,7 @@ library(shiny)
 
 source("R/utilidades.R")
 source("R/modules/simple_inspeccion.R")
+source("R/modules/sturges.R")
 
 ui = fluidPage(
   tags$head(
@@ -211,19 +212,30 @@ ui = fluidPage(
       radioButtons(
         "apartado",
         "Apartado",
-        choices = c("Tabla simple inspección"),
+        choices = c(
+          "Tabla simple inspección",
+          "Tabla Sturges"
+        ),
         selected = "Tabla simple inspección"
       )
     ),
     div(
       class = "contenido",
-      modulo_simple_inspeccion_ui("simple")
+      conditionalPanel(
+        condition = "input.apartado == 'Tabla simple inspección'",
+        modulo_simple_inspeccion_ui("simple")
+      ),
+      conditionalPanel(
+        condition = "input.apartado == 'Tabla Sturges'",
+        modulo_sturges_ui("sturges")
+      )
     )
   )
 )
 
 server = function(input, output, session) {
   modulo_simple_inspeccion_server("simple")
+  modulo_sturges_server("sturges")
 }
 
 shinyApp(ui, server)
