@@ -117,6 +117,13 @@ modulo_diagrama_lineal_ui = function(id) {
       "Mostrar valores sobre los puntos",
       value = TRUE
     ),
+    numericInput(
+      ns("salto_eje_y"),
+      "Salto del eje Y",
+      value = 2,
+      min = 0.1,
+      step = 0.5
+    ),
     h4("Datos"),
     div(
       class = "tabla-edicion",
@@ -242,6 +249,7 @@ modulo_diagrama_lineal_server = function(id) {
       updateTextInput(session, "nombre_columna_y", value = "Número de conocimientos")
       updateSelectInput(session, "color", selected = "#c94f4f")
       updateCheckboxInput(session, "mostrar_valores", value = TRUE)
+      updateNumericInput(session, "salto_eje_y", value = 2)
       datos_reactivos(datos_ejemplo_diagrama_lineal)
     })
 
@@ -364,11 +372,27 @@ modulo_diagrama_lineal_server = function(id) {
       posiciones = seq_along(valores)
       color = input$color
 
-      limite_superior = max(valores) * 1.18
+      salto_y = input$salto_eje_y
 
-      if (limite_superior <= 0) {
-        limite_superior = max(valores) + 1
+      if (is.null(salto_y) || is.na(salto_y) || salto_y <= 0) {
+        salto_y = 1
       }
+
+      valor_minimo = min(valores)
+      valor_maximo = max(valores)
+
+      inicio_y = floor(valor_minimo / salto_y) * salto_y
+      fin_y = ceiling(valor_maximo / salto_y) * salto_y
+
+      if (inicio_y > 0) {
+        inicio_y = 0
+      }
+
+      if (fin_y == valor_maximo) {
+        fin_y = fin_y + salto_y
+      }
+
+      eje_y = seq(inicio_y, fin_y, by = salto_y)
 
       par(mar = c(6, 6, 5, 3), mgp = c(3.5, 1, 0))
 
@@ -380,11 +404,9 @@ modulo_diagrama_lineal_server = function(id) {
         xlab = "",
         ylab = "",
         xlim = c(1, length(posiciones)),
-        ylim = c(0, limite_superior),
+        ylim = c(inicio_y, fin_y),
         axes = FALSE
       )
-
-      eje_y = pretty(c(0, limite_superior))
 
       axis(1, at = posiciones, labels = categorias, las = 1)
       axis(2, at = eje_y, labels = formatear_numero(eje_y, 3), las = 1)
