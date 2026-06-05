@@ -33,6 +33,143 @@ leer_datos_lineal = function(input, datos_base) {
   )
 }
 
+obtener_valor_seguro = function(fila, nombre, posicion) {
+  if (is.null(fila)) {
+    return("")
+  }
+
+  if (is.list(fila)) {
+    if (!is.null(fila[[nombre]])) {
+      return(as.character(fila[[nombre]]))
+    }
+
+    if (length(fila) >= posicion) {
+      return(as.character(fila[[posicion]]))
+    }
+
+    return("")
+  }
+
+  if (is.atomic(fila)) {
+    nombres = names(fila)
+
+    if (!is.null(nombres) && nombre %in% nombres) {
+      return(as.character(fila[[nombre]]))
+    }
+
+    if (length(fila) >= posicion) {
+      return(as.character(fila[[posicion]]))
+    }
+
+    return("")
+  }
+
+  ""
+}
+
+parsear_lineas_lineal = function(texto) {
+  texto = gsub("\r\n", "\n", texto)
+  texto = gsub("\r", "\n", texto)
+
+  lineas = unlist(strsplit(texto, "\n", fixed = TRUE))
+
+  categorias = character(0)
+  valores = character(0)
+
+  for (linea in lineas) {
+    linea = trimws(linea)
+
+    if (linea == "") {
+      next
+    }
+
+    if (grepl("\t", linea, fixed = TRUE)) {
+      partes = trimws(unlist(strsplit(linea, "\t", fixed = TRUE)))
+    } else if (grepl(";", linea, fixed = TRUE)) {
+      partes = trimws(unlist(strsplit(linea, ";", fixed = TRUE)))
+    } else {
+      partes = trimws(unlist(strsplit(linea, "[ ]+")))
+    }
+
+    partes = partes[partes != ""]
+
+    if (length(partes) >= 2) {
+      categorias = c(categorias, paste(partes[1:(length(partes) - 1)], collapse = " "))
+      valores = c(valores, partes[length(partes)])
+    }
+  }
+
+  data.frame(
+    categoria = categorias,
+    valor = valores,
+    stringsAsFactors = FALSE
+  )
+}
+
+convertir_filas_pegadas_lineal = function(filas) {
+  if (is.null(filas) || length(filas) == 0) {
+    return(data.frame(categoria = character(0), valor = character(0), stringsAsFactors = FALSE))
+  }
+
+  if (is.data.frame(filas)) {
+    if (all(c("categoria", "valor") %in% names(filas))) {
+      return(data.frame(
+        categoria = as.character(filas$categoria),
+        valor = as.character(filas$valor),
+        stringsAsFactors = FALSE
+      ))
+    }
+
+    if (ncol(filas) >= 2) {
+      return(data.frame(
+        categoria = as.character(filas[[1]]),
+        valor = as.character(filas[[2]]),
+        stringsAsFactors = FALSE
+      ))
+    }
+  }
+
+  if (is.character(filas) && length(filas) == 1 && grepl("\n|\t|;", filas)) {
+    return(parsear_lineas_lineal(filas))
+  }
+
+  if (is.atomic(filas) && !is.list(filas)) {
+    if (length(filas) >= 2) {
+      matriz = matrix(filas, ncol = 2, byrow = TRUE)
+
+      return(data.frame(
+        categoria = as.character(matriz[, 1]),
+        valor = as.character(matriz[, 2]),
+        stringsAsFactors = FALSE
+      ))
+    }
+
+    return(data.frame(categoria = character(0), valor = character(0), stringsAsFactors = FALSE))
+  }
+
+  categorias = character(0)
+  valores = character(0)
+
+  for (fila in filas) {
+    categoria = obtener_valor_seguro(fila, "categoria", 1)
+    valor = obtener_valor_seguro(fila, "valor", 2)
+
+    categoria = trimws(as.character(categoria))
+    valor = trimws(as.character(valor))
+
+    if (categoria != "" && valor != "") {
+      categorias = c(categorias, categoria)
+      valores = c(valores, valor)
+    }
+  }
+
+  data.frame(
+    categoria = categorias,
+    valor = valores,
+    stringsAsFactors = FALSE
+  )
+}
+
 validar_datos_lineal = function(datos) {
   if (nrow(datos) == 0) {
     return("Debe existir al menos una fila de datos.")
@@ -203,20 +340,13 @@ modulo_diagrama_lineal_server = function(id) {
     })
 
     observeEvent(input$datos_pegados, {
-      filas = input$datos_pegados
+      datos_pegados = convertir_filas_pegadas_lineal(input$datos_pegados)
 
-      if (length(filas) == 0) {
+      if (nrow(datos_pegados) == 0) {
         return()
       }
 
-      categorias = sapply(filas, function(fila) fila$categoria)
-      valores = sapply(filas, function(fila) fila$valor)
-
-      datos_reactivos(data.frame(
-        categoria = categorias,
-        valor = valores,
-        stringsAsFactors = FALSE
-      ))
+      datos_reactivos(datos_pegados)
     })
 
     observeEvent(input$agregar_fila, {
