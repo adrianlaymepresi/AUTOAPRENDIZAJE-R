@@ -388,13 +388,13 @@ modulo_sturges_server = function(id) {
       }
 
       tagList(
-        h2(class = "subtitulo", input$numero_tabla),
-        h4(input$titulo_tabla),
-
-        h4("Cálculos"),
+        h2(class = "subtitulo", "Cálculos"),
         tableOutput(session$ns("pasos_sturges")),
 
-        h4("Tabla completa"),
+        tags$hr(),
+
+        h2(class = "subtitulo", input$numero_tabla),
+        h4(input$titulo_tabla),
         tableOutput(session$ns("tabla_sturges")),
 
         div(
