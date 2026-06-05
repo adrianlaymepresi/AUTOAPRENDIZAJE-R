@@ -29,7 +29,7 @@ ejemplos_medidas_no_clasificados = list(
     k = 1
   ),
   "Deciles" = list(
-    datos = "8;  7;  15;  4;  10;  9;  1;",
+    datos = "0;  1;  3;  3;  4;  5;  5;  6;  6;  8;",
     nota = "Ejemplo para deciles con datos no clasificados usando interpolación si la posición no es entera.",
     k = 3
   ),

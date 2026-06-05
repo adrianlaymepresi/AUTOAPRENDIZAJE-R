@@ -413,10 +413,10 @@ ui = fluidPage(
     class = "contenedor",
     div(
       class = "sidebar",
-      h1("Estadística I"),
+      h1("Estadística"),
       radioButtons(
         "apartado",
-        "Apartado",
+        "APARTADOS",
         choices = c(
           "Medidas",
           "Tabla simple inspección",
