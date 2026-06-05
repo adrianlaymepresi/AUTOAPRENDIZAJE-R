@@ -4,6 +4,7 @@
 library(shiny)
 
 source("R/utilidades.R")
+source("R/modules/medidas.R")
 source("R/modules/simple_inspeccion.R")
 source("R/modules/sturges.R")
 source("R/modules/grafico_barras.R")
@@ -113,6 +114,51 @@ ui = fluidPage(
         return filas;
       }
 
+      function normalizarFilasClasificadas(texto) {
+        texto = texto.replace(/\\r\\n/g, '\\n').replace(/\\r/g, '\\n');
+
+        const lineas = texto.split('\\n');
+        const filas = [];
+
+        lineas.forEach(function(linea) {
+          linea = linea.trim();
+
+          if (linea === '') {
+            return;
+          }
+
+          let partes = [];
+
+          if (linea.includes('\\t')) {
+            partes = linea.split('\\t');
+          } else if (linea.includes(';')) {
+            partes = linea.split(';');
+          } else {
+            partes = linea.split(/[ ]+/);
+          }
+
+          partes = partes
+            .map(function(parte) {
+              return parte.trim();
+            })
+            .filter(function(parte) {
+              return parte !== '';
+            });
+
+          if (partes.length < 3) {
+            return;
+          }
+
+          filas.push({
+            Li: convertirNumeroGrafico(partes[0]),
+            Ls: convertirNumeroGrafico(partes[1]),
+            fi: convertirNumeroGrafico(partes[2])
+          });
+        });
+
+        return filas;
+      }
+
       async function pegarEnTextArea(id) {
         const texto = await navigator.clipboard.readText();
         const textoNormalizado = normalizarDatosPegados(texto);
@@ -125,6 +171,12 @@ ui = fluidPage(
       async function pegarDatosGrafico(inputId) {
         const texto = await navigator.clipboard.readText();
         const filas = normalizarFilasGrafico(texto);
+        Shiny.setInputValue(inputId, filas, {priority: 'event'});
+      }
+
+      async function pegarDatosClasificados(inputId) {
+        const texto = await navigator.clipboard.readText();
+        const filas = normalizarFilasClasificadas(texto);
         Shiny.setInputValue(inputId, filas, {priority: 'event'});
       }
     ")),
@@ -271,6 +323,18 @@ ui = fluidPage(
         max-width: 860px;
       }
 
+      .resultado-principal {
+        background: #eaf7ef;
+        border: 1px solid #c7ead5;
+        color: var(--verde-oscuro);
+        border-radius: 16px;
+        padding: 18px;
+        font-size: 24px;
+        font-weight: 900;
+        display: inline-block;
+        margin-bottom: 18px;
+      }
+
       .tabla-edicion {
         max-width: 860px;
         margin-bottom: 16px;
@@ -284,6 +348,14 @@ ui = fluidPage(
         margin-bottom: 8px;
       }
 
+      .encabezado-edicion-clasificada {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        font-weight: 800;
+        margin-bottom: 8px;
+      }
+
       .fila-edicion {
         display: grid;
         grid-template-columns: 1fr 220px;
@@ -291,7 +363,15 @@ ui = fluidPage(
         margin-bottom: 8px;
       }
 
-      .fila-edicion .form-group {
+      .fila-edicion-clasificada {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .fila-edicion .form-group,
+      .fila-edicion-clasificada .form-group {
         margin-bottom: 0;
       }
 
@@ -301,6 +381,31 @@ ui = fluidPage(
         border-radius: 14px;
         padding: 18px;
         margin-top: 16px;
+      }
+
+      .grupo-controles {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        max-width: 860px;
+      }
+
+      @media (max-width: 900px) {
+        .contenedor {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+        }
+
+        .grupo-controles,
+        .encabezado-edicion,
+        .fila-edicion,
+        .encabezado-edicion-clasificada,
+        .fila-edicion-clasificada {
+          grid-template-columns: 1fr;
+        }
       }
     "))
   ),
@@ -313,16 +418,21 @@ ui = fluidPage(
         "apartado",
         "Apartado",
         choices = c(
+          "Medidas",
           "Tabla simple inspección",
           "Tabla Sturges",
           "Gráfico de barras",
           "Diagrama lineal"
         ),
-        selected = "Tabla simple inspección"
+        selected = "Medidas"
       )
     ),
     div(
       class = "contenido",
+      conditionalPanel(
+        condition = "input.apartado == 'Medidas'",
+        modulo_medidas_ui("medidas")
+      ),
       conditionalPanel(
         condition = "input.apartado == 'Tabla simple inspección'",
         modulo_simple_inspeccion_ui("simple")
@@ -344,6 +454,7 @@ ui = fluidPage(
 )
 
 server = function(input, output, session) {
+  modulo_medidas_server("medidas")
   modulo_simple_inspeccion_server("simple")
   modulo_sturges_server("sturges")
   modulo_grafico_barras_server("barras")
